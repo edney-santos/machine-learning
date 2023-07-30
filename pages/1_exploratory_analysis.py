@@ -2,15 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+from helper import get_dataframe
 
 
-st.title('Top 10.000 TMDb movies data - exploratory analysis')
+st.title('Exploratory data analysis')
+# st.sidebar.title('Top 10.000 TMDb movies data analysis')
 
-
-dataframe = pd.read_csv('./data/top_1000_popular_movies_tmdb.csv', lineterminator='\n', index_col=0)
-dataframe.drop(['id', 'overview', 'tagline'], axis=1, inplace=True)
-dataframe.dropna(axis=0, inplace=True)
-dataframe['genres'] = dataframe['genres'].apply(eval)
+dataframe = get_dataframe(profit = False)
 
 if st.checkbox('Show raw dataframe'):
     st.write(dataframe)
@@ -23,7 +21,6 @@ st.bar_chart(dataframe['original_language'].value_counts())
 
 
 st.divider()
-
 
 
 
@@ -58,7 +55,6 @@ choice = st.selectbox('Choose a movie gender:', unique_genres, index=0)
 df_exploded = dataframe.explode('genres')
 filtered_movies = df_exploded.loc[df_exploded['genres'] == choice].sort_values('popularity', ascending=False)
 
-# st.bar_chart(data=filtered_movies.head(10), x='title', y='popularity', use_container_width=True)
 
 fig = px.bar(filtered_movies.head(10), x='title', y='popularity',)
 st.plotly_chart(fig)

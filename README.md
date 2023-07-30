@@ -59,7 +59,7 @@ pip install -r requirements.txt
 
 1. Execute o seguinte comando para iniciar o projeto:
 ```
-streamlit run index.py
+streamlit run Home.py
 ```
 ## Stack utilizada
 
