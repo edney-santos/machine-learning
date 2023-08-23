@@ -1,96 +1,83 @@
 import pandas as pd
 import streamlit as st
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error
+
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
 
 
-st.title('Data pre-processing')
-st.subheader('Importing data')
-st.markdown('We will start by importing our database using the pandas library with the read_csv function.')
-
-code1 = '''dataframe = pd.read_csv(
-    './data/top_1000_popular_movies_tmdb.csv',
-    lineterminator='\\n',
-    index_col=0
-    )'''
-
-st.code(code1, language='python')
-
-dataframe = pd.read_csv('./data/top_1000_popular_movies_tmdb.csv', lineterminator='\n', index_col=0)
-
-with st.expander('View raw dataframe'):
-    st.write(dataframe)
+st.title("Data pre-processing")
 
 
-st.divider()
+dataframe = pd.read_csv(
+    "./data/top_1000_popular_movies_tmdb.csv", lineterminator="\n", index_col=0
+)
+
+dataframe.drop(
+    ["id", "title", "release_date", "overview", "tagline", "production_companies"],
+    axis=1,
+    inplace=True,
+)
+
+# dataframe.dropna(axis=0, inplace=True)
+# dataframe = dataframe[dataframe["revenue"] != 0]
+
+# Dummies dos gêneros
+mlb = MultiLabelBinarizer()
+genres_dummies = pd.DataFrame(
+    mlb.fit_transform(dataframe["genres"].apply(eval)),
+    columns=mlb.classes_,
+    index=dataframe.index,
+)
+dataframe.drop(["genres"], axis=1, inplace=True)
+dataframe = pd.concat([dataframe, genres_dummies], axis=1)
 
 
-st.subheader('Removing unused fields')
-st.markdown('We will remove the _"id"_, _"overview"_ and _"tagline"_ fields that will not be useful for exploratory analysis')
+# Dummies das linguagens
+lenguage_dummies = pd.get_dummies(dataframe['original_language'])
+lenguage_dummies = lenguage_dummies.astype(int)
+dataframe.drop(['original_language'], axis=1, inplace=True)
+dataframe = pd.concat([dataframe, lenguage_dummies], axis=1)
 
-code2 = '''dataframe.drop(['id', 'overview', 'tagline'], axis=1, inplace=True)'''
-
-st.code(code2, language='python')
-
-dataframe.drop(['id', 'overview', 'tagline'], axis=1, inplace=True)
-
-with st.expander('View resulting dataframe'):
-    st.write(dataframe)
+temporary_column = dataframe.pop('revenue')
+dataframe.insert(0, 'revenue',temporary_column)
 
 
-st.divider()
+x_movies = dataframe.iloc[:, 1:].values
+y_movies = dataframe.iloc[:, 0].values
+
+x_movies_treinamento, x_movies_teste, y_movies_treinamento, y_movies_teste = train_test_split(x_movies, y_movies, test_size=0.3, random_state=0)
 
 
-st.subheader('Removing records with null fields')
-st.markdown('We will remove all records that have a null field, keeping the results cleaner')
+# Regressão múltipla
+regressor_mult_movies = LinearRegression()
+regressor_mult_movies.fit(x_movies_treinamento, y_movies_treinamento)
 
-code3 = '''dataframe.dropna(axis=0, inplace=True)'''
+print(regressor_mult_movies.score(x_movies_teste, y_movies_teste))
 
-st.code(code3, language='python')
+previsoes = regressor_mult_movies.predict(x_movies_teste)
 
-dataframe.dropna(axis=0, inplace=True)
+print(mean_absolute_error(y_movies_teste, previsoes))
 
-with st.expander('View Resulting dataframe'):
-    st.write(dataframe)
-
-
-st.divider()
-
-
-st.subheader('Manipulating film genre field')
-st.markdown('The **_"geres"_** field of the dataset is an array of strings like:')
-st.markdown('["Action", "Crime", "Thriller"]')
-st.markdown('We will use the **_"apply(eval)"_** function that will evaluate and separate our genres')
-
-code4 = '''dataframe['genres'] = dataframe['genres'].apply(eval)'''
-
-st.code(code4, language='python')
-
-dataframe['genres'] = dataframe['genres'].apply(eval)
-
-with st.expander('View Resulting dataframe'):
-    st.write(dataframe)
+# st.subheader('Regressão múltipla')
+# st.write('Regressão múltipla score: 0.7074702194743039')
+# st.write('Regressão múltipla Error absoluto médio: 57541643.63203637')
 
 
-st.divider()
 
+# st.subheader('Regressão múltipla')
 
-st.subheader('Creating the profit field')
-st.markdown('For future uses we will create a field with the profit of the movie')
-st.markdown('To do this, first we will remove the fields in which _"budget"_ and _"revenue"_ are equal to 0')
+# poly = PolynomialFeatures(degree=2)
 
-code5 = '''movies_profit = dataframe.drop(dataframe[(dataframe['budget'] == 0)
-& (dataframe['revenue'] == 0)].index)'''
+# x_movies_treinamento_poly = poly.fit_transform(x_movies_treinamento)
+# x_movies_teste_poly = poly.transform(x_movies_teste)
 
-st.code(code5, language='python')
+# regressor_movies_poly = LinearRegression()
+# regressor_movies_poly.fit(x_movies_treinamento_poly, y_movies_treinamento)
 
-movies_profit = dataframe.drop(dataframe[(dataframe['budget'] == 0) & (dataframe['revenue'] == 0)].index)
+# previsoes = regressor_movies_poly.predict(x_movies_teste_poly)
 
-st.markdown('Next, we will create the profit field using the calculation of _"revenue"_ subtracted from _"budget"_')
-
-code6 = '''movies_profit['profit'] = movies_profit['revenue'] - movies_profit['budget']'''
-
-st.code(code6, language='python')
-
-movies_profit['profit'] = movies_profit['revenue'] - movies_profit['budget']
-
-with st.expander('View Resulting dataframe'):
-    st.write(movies_profit)
+# print(regressor_movies_poly.score(x_movies_teste_poly, y_movies_teste))
+# print(mean_absolute_error(y_movies_teste, previsoes))
